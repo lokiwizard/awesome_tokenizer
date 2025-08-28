@@ -12,3 +12,14 @@ These tokenizers convert images into discrete tokens for applications such as im
 | **Cosmos**      | a high performance image tokenizer trained by nvdia                      | [Download](https://huggingface.co/collections/nvidia/cosmos-tokenizer-672b93023add81b66a8ff8e6) |
 | **ONE_D_Piece** | a novel image tokenizer supporting quality-controllable image compression | [Download](https://github.com/turingmotors/One-D-Piece) |
 
+You can download their checkpoints and use them directly in your projects.
+
+## 🚀 Quick Start
+I provide a demo jupyter notebook to demonstrate how to use these tokenizers.
+
+## References
+You can find more details about each model in their respective papers:
+- [VQ-GAN](https://arxiv.org/abs/2012.09841)
+- [TiTOK](https://arxiv.org/abs/2406.07550)
+- [Cosmos](https://arxiv.org/abs/2501.03575)
+- [ONE-D-PIECE](https://arxiv.org/abs/2501.10064)
