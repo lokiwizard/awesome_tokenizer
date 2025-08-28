@@ -48,11 +48,11 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         tokens = titok_tokenizer.encode(test_image)[1]["min_encoding_indices"]
-        masked_tokens, mask_indices = mask_tokens(tokens, mask_token_id=4096, mask_ratio=0.5)
+        masked_tokens, mask_indices = mask_tokens(tokens, mask_token_id=4096, mask_ratio=0.3)
         print("Original Tokens:", tokens)
         print("Masked Tokens:", masked_tokens)
 
-        logits = generator.predict_masked_tokens(masked_tokens.squeeze(1))
+        logits = generator.predict_masked_tokens(masked_tokens.squeeze(1), condition=torch.tensor([281]))
 
         # get the predicted tokens at the masked positions
         predicted_tokens = logits.argmax(dim=-1)

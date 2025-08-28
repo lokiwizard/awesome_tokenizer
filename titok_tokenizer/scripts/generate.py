@@ -20,7 +20,7 @@ def sample_fn(generator,
     tokenizer.eval()
     if labels is None:
         # goldfish, chicken, tiger, cat, hourglass, ship, dog, race car, airliner, teddy bear, random
-        labels = [1, 7, 282, 604, 724, 179, 751, 404, 850, 1000]
+        labels = [281, 282, 282, 604, 724, 179, 751, 404, 850, 1000]
 
     if not isinstance(labels, torch.Tensor):
         labels = torch.LongTensor(labels).to(device)

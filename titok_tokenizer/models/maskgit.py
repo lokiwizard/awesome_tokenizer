@@ -87,10 +87,12 @@ class ImageBert(BaseModel, PyTorchModelHubMixin, tags=["arxiv:2406.07550", "imag
             json.dump(dict_config, json_file, indent=4)
         super()._save_pretrained(save_directory)
 
-    def predict_masked_tokens(self, input_ids):
+    def predict_masked_tokens(self, input_ids, condition=None):
 
         b, n = input_ids.shape
-        condition =  [self.condition_num_classes + self.target_codebook_size + 1] * b
+        if condition is None:
+            condition = [self.condition_num_classes + self.target_codebook_size + 1] * b
+
         condition = torch.LongTensor(condition).to(input_ids.device)
         input_ids = torch.cat([condition.view(condition.shape[0], -1),
                                input_ids.view(input_ids.shape[0], -1), ], dim=1)
