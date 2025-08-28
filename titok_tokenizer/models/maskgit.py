@@ -87,6 +87,17 @@ class ImageBert(BaseModel, PyTorchModelHubMixin, tags=["arxiv:2406.07550", "imag
             json.dump(dict_config, json_file, indent=4)
         super()._save_pretrained(save_directory)
 
+    def predict_masked_tokens(self, input_ids):
+
+        b, n = input_ids.shape
+        condition =  [self.condition_num_classes + self.target_codebook_size + 1] * b
+        condition = torch.LongTensor(condition).to(input_ids.device)
+        input_ids = torch.cat([condition.view(condition.shape[0], -1),
+                               input_ids.view(input_ids.shape[0], -1), ], dim=1)
+        model_output = self.model(input_ids=input_ids)
+        model_output = model_output[0]
+        return self.model.lm_head(model_output[:, 1:])  # remove cond
+
     def forward(self, input_ids=None, condition=None, cond_drop_prob=0.1):
         # Token space:
         #  [0, codebook_size - 1]                       : those are the learned quantized image tokens
