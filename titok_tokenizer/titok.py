@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from modules.base_model import BaseModel
-from modules.blocks import TiTokDecoder, TiTokEncoder
-from modules.maskgit_vqgan import Encoder as Pixel_Encoder
-from modules.maskgit_vqgan import Decoder as Pixel_Decoder
-from modules.maskgit_vqgan import VectorQuantizer as Pixel_Quantizer
+from .modules.base_model import BaseModel
+from .modules.blocks import TiTokDecoder, TiTokEncoder
+from .modules.maskgit_vqgan import Encoder as Pixel_Encoder
+from .modules.maskgit_vqgan import Decoder as Pixel_Decoder
+from .modules.maskgit_vqgan import VectorQuantizer as Pixel_Quantizer
 
-from modules.quantizer import VectorQuantizer, DiagonalGaussianDistribution
+from .modules.quantizer import VectorQuantizer, DiagonalGaussianDistribution
 
 import json
 from omegaconf import OmegaConf

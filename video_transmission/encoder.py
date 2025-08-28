@@ -1,7 +1,7 @@
 from cosmos_tokenizer.image_lib import ImageTokenizer
 
 
-ENCODER_PATH = r"/\cosmos_tokenizer\checkpoints\DI8X8_encoder.jit"
+ENCODER_PATH = r"D:\pyproject\awesome_tokenizer\cosmos_tokenizer\checkpoints\DI16X16_encoder.jit"
 
 
 def load_encoder():
