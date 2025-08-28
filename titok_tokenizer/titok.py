@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-from .modules.base_model import BaseModel
-from .modules.blocks import TiTokDecoder, TiTokEncoder
-from .modules.maskgit_vqgan import Encoder as Pixel_Encoder
-from .modules.maskgit_vqgan import Decoder as Pixel_Decoder
-from .modules.maskgit_vqgan import VectorQuantizer as Pixel_Quantizer
+from modules.base_model import BaseModel
+from modules.blocks import TiTokDecoder, TiTokEncoder
+from modules.maskgit_vqgan import Encoder as Pixel_Encoder
+from modules.maskgit_vqgan import Decoder as Pixel_Decoder
+from modules.maskgit_vqgan import VectorQuantizer as Pixel_Quantizer
 
-from .modules.quantizer import VectorQuantizer, DiagonalGaussianDistribution
+from modules.quantizer import VectorQuantizer, DiagonalGaussianDistribution
 
 import json
 from omegaconf import OmegaConf
@@ -190,3 +190,16 @@ class TiTok(BaseModel, PyTorchModelHubMixin, tags=["arxiv:2406.07550", "image-to
         z_quantized, result_dict = self.encode(x)
         decoded = self.decode(z_quantized)
         return decoded, result_dict
+
+if __name__ == "__main__":
+    config_path = "configs/titok_b64.yaml"
+    config = OmegaConf.load(config_path)
+
+    model = TiTok(config)
+    model.finetune_decoder = True
+    x = torch.randn(2, 3, 256, 256)
+    z_qutized, result_dict = model.encode(x)
+    print(z_qutized.shape)
+    dec = model.decode(z_qutized)
+    print(dec.shape)
+
