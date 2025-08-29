@@ -130,15 +130,19 @@ class ImageBert(BaseModel, PyTorchModelHubMixin, tags=["arxiv:2406.07550", "imag
                  guidance_scale_pow=3.0,
                  randomize_temperature=4.5,
                  softmax_temperature_annealing=False,
-                 num_sample_steps=8):
+                 num_sample_steps=8,
+                 input_ids=None):
         if guidance_decay not in ["constant", "linear", "power-cosine"]:
             # contstant: constant guidance scale
             # linear: linear increasing the guidance scale as in MUSE
             # power-cosine: the guidance schedule from MDT
             raise ValueError(f"Unsupported guidance decay {guidance_decay}")
         device = condition.device
-        ids = torch.full((condition.shape[0], self.image_seq_len),
-                         self.mask_token_id, device=device)
+        if input_ids is None:
+            ids = torch.full((condition.shape[0], self.image_seq_len),
+                             self.mask_token_id, device=device)
+        else:
+            ids = input_ids
 
         cfg_scale = guidance_scale if guidance_decay == "constant" else 0.
 
