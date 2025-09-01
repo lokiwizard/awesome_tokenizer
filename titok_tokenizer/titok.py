@@ -3,7 +3,10 @@ import torch.nn as nn
 from einops import rearrange
 
 from titok_tokenizer.modules.base_model import BaseModel
-from titok_tokenizer.modules.blocks import TiTokDecoder, TiTokEncoder
+from titok_tokenizer.modules.blocks import TiTokDecoder
+#from titok_tokenizer.modules.blocks import TiTokEncoder
+from titok_tokenizer.modules.tome_blocks import TiTokEncoder
+
 from titok_tokenizer.modules.maskgit_vqgan import Encoder as Pixel_Encoder
 from titok_tokenizer.modules.maskgit_vqgan import Decoder as Pixel_Decoder
 from titok_tokenizer.modules.maskgit_vqgan import VectorQuantizer as Pixel_Quantizer
