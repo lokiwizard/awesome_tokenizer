@@ -21,23 +21,24 @@ def _bipartite_soft_matching(metric: torch.Tensor, r: int):
 
     with torch.no_grad():
         m = metric / (metric.norm(dim=-1, keepdim=True) + 1e-12)
-        a, b = m[..., ::2, :], m[..., 1::2, :]             # 偶数位=A，奇数位=B
-        scores = a @ b.transpose(-1, -2)                   # [B, T/2, T/2]
-        node_max, node_idx = scores.max(dim=-1)            # A 的最佳 B
+        a, b = m[..., ::2, :], m[..., 1::2, :]  # 偶数位=A，奇数位=B
+        scores = a @ b.transpose(-1, -2)  # [B, T/2, T/2]
+        scores[..., 0, :] = -math.inf
+        node_max, node_idx = scores.max(dim=-1)  # A 的最佳 B
         edge_idx = node_max.argsort(dim=-1, descending=True)[..., None]
-        unm_idx = edge_idx[..., r:, :]                     # 不合并的 A
-        src_idx = edge_idx[..., :r, :]                     # 要合并的 A
+        unm_idx = edge_idx[..., r:, :]  # 不合并的 A
+        src_idx = edge_idx[..., :r, :]  # 要合并的 A
         dst_idx = node_idx[..., None].gather(-2, index=src_idx)
 
     def _merge(x: torch.Tensor, reduce="mean") -> torch.Tensor:
         # x: [B, Tspan, C]
-        src, dst = x[..., ::2, :], x[..., 1::2, :]         # [B, T/2, C]
+        src, dst = x[..., ::2, :], x[..., 1::2, :]  # [B, T/2, C]
         B, t1, C = src.shape
         unm = src.gather(-2, unm_idx.expand(B, t1 - r, C))
         src_take = src.gather(-2, src_idx.expand(B, r, C))
-        if hasattr(dst, "scatter_reduce"):                 # torch>=1.12
+        if hasattr(dst, "scatter_reduce"):  # torch>=1.12
             dst = dst.scatter_reduce(-2, dst_idx.expand(B, r, C), src_take, reduce=reduce)
-        else:                                              # 旧版 fallback：mean = sum / count
+        else:  # 旧版 fallback：mean = sum / count
             idx = dst_idx.expand(B, r, C)
             lin = (torch.arange(B, device=x.device)[:, None, None] * t1 + idx.squeeze(-1)).reshape(-1)
             acc = dst.reshape(B * t1, C).clone()
@@ -45,7 +46,7 @@ def _bipartite_soft_matching(metric: torch.Tensor, r: int):
             cnt = torch.zeros(B * t1, 1, device=x.device, dtype=x.dtype)
             cnt.index_add_(0, lin, torch.ones_like(src_take[..., :1]).reshape(-1, 1))
             dst = (acc / cnt.clamp_min_(1)).reshape(B, t1, C)
-        return torch.cat([unm, dst], dim=1)                # [B, Tspan - r, C]
+        return torch.cat([unm, dst], dim=1)  # [B, Tspan - r, C]
 
     def _unmerge(x: torch.Tensor) -> torch.Tensor:
         B, _, C = x.shape
@@ -78,13 +79,13 @@ def _make_span_merger(metric_all: torch.Tensor, span: tuple[int, int], r: int):
 
 class ResidualAttentionBlock(nn.Module):
     def __init__(
-        self,
-        d_model: int,
-        n_head: int,
-        mlp_ratio: float = 4.0,
-        act_layer = nn.GELU,
-        norm_layer = nn.LayerNorm,
-        latent_len: int = 64,        # 仅配置 latent 段长度（固定在序列尾部）
+            self,
+            d_model: int,
+            n_head: int,
+            mlp_ratio: float = 4.0,
+            act_layer=nn.GELU,
+            norm_layer=nn.LayerNorm,
+            latent_len: int = 64,  # 仅配置 latent 段长度（固定在序列尾部）
     ):
         super().__init__()
         self.ln_1 = norm_layer(d_model)
@@ -112,21 +113,21 @@ class ResidualAttentionBlock(nn.Module):
         入: h_SBC [S, B, C]；出: [B, S, C]（batch-first 便于 ToMe）
         """
         W = self.attn.in_proj_weight  # [3C, C]
-        b = self.attn.in_proj_bias    # [3C] or None
+        b = self.attn.in_proj_bias  # [3C] or None
         C = h_SBC.shape[-1]
-        Wk = W[C:2*C, :]
-        bk = b[C:2*C] if b is not None else None
-        KSBC = F.linear(h_SBC, Wk, bk)              # [S, B, C]
-        return KSBC.transpose(0, 1).contiguous()    # [B, S, C]
+        Wk = W[C:2 * C, :]
+        bk = b[C:2 * C] if b is not None else None
+        KSBC = F.linear(h_SBC, Wk, bk)  # [S, B, C]
+        return KSBC.transpose(0, 1).contiguous()  # [B, S, C]
 
     def forward(
-        self,
-        x_SBC: torch.Tensor,   # [S, B, d]，排列为 [pixel tokens, latent tokens]
-        r: int = 0             # 本层要合并的 pixel tokens 数（自动截到 <= pixel_len//2）
+            self,
+            x_SBC: torch.Tensor,  # [S, B, d]，排列为 [pixel tokens, latent tokens]
+            r: int = 0  # 本层要合并的 pixel tokens 数（自动截到 <= pixel_len//2）
     ):
         S, B, C = x_SBC.shape
         assert 0 <= self.latent_len <= S, "invalid latent_len"
-        pixel_len = S - self.latent_len             # 只合并前 pixel_len 段
+        pixel_len = S - self.latent_len  # 只合并前 pixel_len 段
 
         # --- Self-Attention（保持原权重与行为） ---
         h_SBC = self.ln_1(x_SBC)
@@ -136,13 +137,13 @@ class ResidualAttentionBlock(nn.Module):
         # --- ToMe：只对像素段 [0:pixel_len) 合并；latent 段 [pixel_len:S) 不动 ---
         if r > 0 and pixel_len > 1:
             # 1) 用现有权重计算 K 作为相似度度量
-            K_BSC = self._k_proj_from_attn(h_SBC)                    # [B, S, C]
+            K_BSC = self._k_proj_from_attn(h_SBC)  # [B, S, C]
             # 2) 仅在像素段做匹配/合并
             merge_pix, r_eff = _make_span_merger(K_BSC, span=(0, pixel_len), r=r)
             # 3) 对 x 应用相同合并（先转 [B,S,C]，合并后再转回 [S,B,C]）
-            x_BSC = x_SBC.transpose(0, 1).contiguous()               # [B, S, C]
-            x_BSC = merge_pix(x_BSC)                                 # [B, S - r_eff, C]
-            x_SBC = x_BSC.transpose(0, 1).contiguous()               # [S - r_eff, B, C]
+            x_BSC = x_SBC.transpose(0, 1).contiguous()  # [B, S, C]
+            x_BSC = merge_pix(x_BSC)  # [B, S - r_eff, C]
+            x_SBC = x_BSC.transpose(0, 1).contiguous()  # [S - r_eff, B, C]
         # else: 不合并，保持长度不变
 
         # --- MLP（在缩短后的序列上运行） ---
@@ -162,7 +163,6 @@ class TiTokEncoder(nn.Module):
         self.model_size = config.model.vq_model.vit_enc_model_size
         self.num_latent_tokens = config.model.vq_model.num_latent_tokens
         self.token_size = config.model.vq_model.token_size
-        self.r = config.model.vq_model.tome_r
 
         if config.model.vq_model.get("quantize_mode", "vq") == "vae":
             self.token_size = self.token_size * 2
@@ -191,14 +191,15 @@ class TiTokEncoder(nn.Module):
             )
         self.ln_post = nn.LayerNorm(self.width)
         self.conv_out = nn.Conv2d(self.width, self.token_size, kernel_size=1, bias=True)
+        self.r_list = config.model.vq_model.tome_r
 
     def forward(self, pixel_values, latent_tokens):
         B = pixel_values.shape[0]
 
         # patchify
-        x = self.patch_embed(pixel_values)                 # [B, C, H/ps, W/ps]
-        x = x.reshape(B, self.width, -1)                   # [B, C, grid^2]
-        x = x.permute(0, 2, 1)                             # [B, grid^2, width]
+        x = self.patch_embed(pixel_values)  # [B, C, H/ps, W/ps]
+        x = x.reshape(B, self.width, -1)  # [B, C, grid^2]
+        x = x.permute(0, 2, 1)  # [B, grid^2, width]
 
         # prepend CLS, add pos
         x = torch.cat([_expand_token(self.class_embedding, B).to(x.dtype), x], dim=1)  # [B, 1+grid^2, width]
@@ -207,22 +208,22 @@ class TiTokEncoder(nn.Module):
         # append latents + pos
         latent_tokens = _expand_token(latent_tokens, B).to(x.dtype)
         latent_tokens = latent_tokens + self.latent_token_positional_embedding.to(x.dtype)
-        x = torch.cat([x, latent_tokens], dim=1)           # [B, 1+grid^2+L, width]
+        x = torch.cat([x, latent_tokens], dim=1)  # [B, 1+grid^2+L, width]
 
         # pre-norm and swap to [S, B, d]
         x = self.ln_pre(x)
-        x = x.permute(1, 0, 2)                             # [S, B, d]
+        x = x.permute(1, 0, 2)  # [S, B, d]
 
-
+        r_index = 0
         for blk in self.transformer:
-            x = blk(x, r=self.r)
-            print(x.shape)
+            x = blk(x, r=self.r_list[r_index])
+            r_index += 1
+            #print(x[:len(x)-self.num_latent_tokens, :, :].shape)
 
-        x = x.permute(1, 0, 2)                             # [B, S', d]，注意 S' ≤ 1+grid^2+L
-
+        x = x.permute(1, 0, 2)  # [B, S', d]，注意 S' ≤ 1+grid^2+L
 
         L = self.num_latent_tokens
-        latent_tokens = x[:, -L:, :]                       # [B, L, d] —— 始终是尾部 L 个
+        latent_tokens = x[:, -L:, :]  # [B, L, d] —— 始终是尾部 L 个
         latent_tokens = self.ln_post(latent_tokens)
 
         # fake 2D & head
@@ -231,7 +232,6 @@ class TiTokEncoder(nn.Module):
         else:
             latent_tokens = latent_tokens.reshape(B, L, self.width, 1).permute(0, 2, 1, 3)
 
-        latent_tokens = self.conv_out(latent_tokens)       # [B, token_size, 1, L]
+        latent_tokens = self.conv_out(latent_tokens)  # [B, token_size, 1, L]
         latent_tokens = latent_tokens.reshape(B, self.token_size, 1, L)
         return latent_tokens
-

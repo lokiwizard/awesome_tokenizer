@@ -92,6 +92,9 @@ class ImageBert(BaseModel, PyTorchModelHubMixin, tags=["arxiv:2406.07550", "imag
         b, n = input_ids.shape
         if condition is None:
             condition = [self.condition_num_classes + self.target_codebook_size + 1] * b
+        else:
+            # shift the classes
+            condition = condition + self.target_codebook_size + 1
 
         condition = torch.LongTensor(condition).to(input_ids.device)
         input_ids = torch.cat([condition.view(condition.shape[0], -1),

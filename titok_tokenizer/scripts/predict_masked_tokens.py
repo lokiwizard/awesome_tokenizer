@@ -62,6 +62,8 @@ if __name__ == "__main__":
         predicted_tokens = generator.generate(condition=torch.tensor([281]).to("cuda"),
                                               input_ids=masked_tokens.squeeze(1).to("cuda"),
                                               )
+        logits = generator(input_ids=masked_tokens.squeeze(1).to("cuda"),
+                           condition=torch.tensor([281]).to("cuda"))
 
 
         #predicted_masked_tokens = masked_tokens.clone()
